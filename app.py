@@ -26,50 +26,6 @@ st.title("❤️ Heart Disease Prediction System")
 selected_model = st.selectbox("Select ML Model", models.keys())
 model = models[selected_model]
 
-# ================= Model Evaluation =================
-st.subheader(f"📊 Model Performance: {selected_model}")
-
-y_pred = model.predict(X_test)
-
-# ---- Confusion Matrix ----
-cm = confusion_matrix(Y_test, y_pred)
-
-fig, ax = plt.subplots()
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
-ax.set_xlabel("Predicted")
-ax.set_ylabel("Actual")
-ax.set_title("Confusion Matrix")
-st.pyplot(fig)
-
-# ---- ROC Curve ----
-if hasattr(model, "predict_proba"):
-    y_prob = model.predict_proba(X_test)[:, 1]
-    fpr, tpr, _ = roc_curve(Y_test, y_prob)
-    roc_auc = auc(fpr, tpr)
-
-    fig, ax = plt.subplots()
-    ax.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
-    ax.plot([0, 1], [0, 1], linestyle="--")
-    ax.set_xlabel("False Positive Rate")
-    ax.set_ylabel("True Positive Rate")
-    ax.set_title("ROC Curve")
-    ax.legend()
-    st.pyplot(fig)
-else:
-    st.info("ROC curve not available for this model.")
-
-# ---- Feature Importance (Tree Models Only) ----
-if selected_model in ["Decision Tree", "Random Forest"]:
-    st.subheader("📌 Feature Importance")
-
-    feature_names = X_test.columns
-    importance = model.feature_importances_
-
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.barplot(x=importance, y=feature_names, ax=ax)
-    ax.set_title("Feature Importance")
-    st.pyplot(fig)
-
 # ================= Sidebar Input =================
 st.sidebar.header("Patient Details")
 
@@ -87,8 +43,10 @@ slope = st.sidebar.selectbox("Slope (0–2)", [0, 1, 2])
 ca = st.sidebar.selectbox("Number of Major Vessels (0–4)", [0, 1, 2, 3, 4])
 thal = st.sidebar.selectbox("Thal (1 = normal, 2 = fixed, 3 = reversible)", [1, 2, 3])
 
-# ================= Prediction =================
+# ================= Predict Button =================
 if st.sidebar.button("Predict"):
+
+    # ---- User Prediction ----
     input_data = np.array([[age, sex, cp, trestbps, chol,
                             fbs, restecg, thalach, exang,
                             oldpeak, slope, ca, thal]])
@@ -99,3 +57,49 @@ if st.sidebar.button("Predict"):
         st.error("⚠️ Person is likely to have Heart Disease")
     else:
         st.success("✅ Person is unlikely to have Heart Disease")
+
+    # ================= Model Evaluation =================
+    st.subheader(f"📊 {selected_model} – Model Performance")
+
+    y_pred = model.predict(X_test)
+
+    col1, col2 = st.columns(2)
+
+    # ---- Confusion Matrix (SMALL) ----
+    with col1:
+        cm = confusion_matrix(Y_test, y_pred)
+        fig, ax = plt.subplots(figsize=(4, 3))
+        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                    cbar=False, ax=ax)
+        ax.set_title("Confusion Matrix")
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        st.pyplot(fig)
+
+    # ---- ROC Curve (SMALL) ----
+    with col2:
+        if hasattr(model, "predict_proba"):
+            y_prob = model.predict_proba(X_test)[:, 1]
+            fpr, tpr, _ = roc_curve(Y_test, y_prob)
+            roc_auc = auc(fpr, tpr)
+
+            fig, ax = plt.subplots(figsize=(4, 3))
+            ax.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+            ax.plot([0, 1], [0, 1], linestyle="--")
+            ax.set_title("ROC Curve")
+            ax.set_xlabel("FPR")
+            ax.set_ylabel("TPR")
+            ax.legend(fontsize=8)
+            st.pyplot(fig)
+        else:
+            st.info("ROC curve not available for this model.")
+
+    # ---- Feature Importance (Tree Models Only) ----
+    if selected_model in ["Decision Tree", "Random Forest"]:
+        st.subheader("📌 Feature Importance")
+
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.barplot(x=model.feature_importances_,
+                    y=X_test.columns, ax=ax)
+        ax.set_title("Feature Importance")
+        st.pyplot(fig)
